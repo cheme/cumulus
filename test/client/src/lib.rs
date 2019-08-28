@@ -20,7 +20,7 @@ pub use test_client::*;
 pub use runtime;
 use runtime::{Block, genesismap::{GenesisConfig, additional_storage_with_genesis}};
 use runtime_primitives::traits::{Hash as HashT, Header as HeaderT, Block as BlockT};
-use primitives::storage::well_known_keys;
+use primitives::sr25519;
 
 mod local_executor {
 	use test_client::executor::native_executor_instance;
@@ -54,20 +54,26 @@ pub type Client = client::Client<Backend, Executor, Block, runtime::RuntimeApi>;
 #[derive(Default)]
 pub struct GenesisParameters {
 	support_changes_trie: bool,
+  // TODO add heap_pages_override?? (tests currently fail into requested allocation to large).
 }
 
 impl test_client::GenesisInit for GenesisParameters {
 	fn genesis_storage(&self) -> (StorageOverlay, ChildrenStorageOverlay) {
 		let mut storage = genesis_config(self.support_changes_trie).genesis_map();
-		storage.insert(well_known_keys::CODE.to_vec(), runtime::WASM_BINARY.to_vec());
 
-		let state_root = <<<Block as BlockT>::Header as HeaderT>::Hashing as HashT>::trie_root(
-			storage.clone().into_iter()
+		let child_roots = storage.1.iter().map(|(sk, child_map)| {
+			let state_root = <<<runtime::Block as BlockT>::Header as HeaderT>::Hashing as HashT>::trie_root(
+				child_map.clone().into_iter()
+			);
+			(sk.clone(), state_root[..].to_vec())
+		});
+		let state_root = <<<runtime::Block as BlockT>::Header as HeaderT>::Hashing as HashT>::trie_root(
+			storage.0.clone().into_iter().chain(child_roots)
 		);
 		let block: runtime::Block = client::genesis::construct_genesis_block(state_root);
-		storage.extend(additional_storage_with_genesis(&block));
+		storage.0.extend(additional_storage_with_genesis(&block));
 
-		(storage, Default::default())
+		storage
 	}
 }
 
@@ -110,14 +116,15 @@ impl DefaultTestClientBuilderExt for TestClientBuilder {
 
 fn genesis_config(support_changes_trie: bool) -> GenesisConfig {
 	GenesisConfig::new(support_changes_trie, vec![
-		AuthorityKeyring::Alice.into(),
-		AuthorityKeyring::Bob.into(),
-		AuthorityKeyring::Charlie.into(),
+		sr25519::Public::from(Sr25519Keyring::Alice).into(),
+		sr25519::Public::from(Sr25519Keyring::Bob).into(),
+		sr25519::Public::from(Sr25519Keyring::Charlie).into(),
 	], vec![
 		AccountKeyring::Alice.into(),
 		AccountKeyring::Bob.into(),
 		AccountKeyring::Charlie.into(),
 	],
-		1000
+		1000,
+		None,
 	)
 }

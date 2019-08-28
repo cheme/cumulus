@@ -21,7 +21,7 @@ fn main() {
 		"wasm_binary.rs",
 		WasmBuilderSource::Git {
 			repo: "https://github.com/paritytech/substrate",
-			rev: "c7fa536d85df5d6a0fc5cdc3f82b6e5a1a2db640",
+			rev: "46b63afe5f593f1035bcc0d84e4619826c12881a",
 		}
 	);
 }

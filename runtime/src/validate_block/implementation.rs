@@ -17,6 +17,8 @@
 //! The actual implementation of the validate block functionality.
 
 use crate::WitnessData;
+use historied_data::linear::{States, History};
+use historied_data::DEFAULT_GC_CONF;
 use runtime_primitives::traits::{
 	Block as BlockT, Header as HeaderT, Hash as HashT
 };
@@ -24,9 +26,11 @@ use executive::ExecuteBlock;
 
 use substrate_trie::{MemoryDB, read_trie_value, delta_trie_root};
 
+use substrate_trie::trie_types::{Layout};
+
 use rstd::{slice, ptr, cmp, vec::Vec, boxed::Box, mem};
 
-use hash_db::HashDB;
+use hash_db::{EMPTY_PREFIX, HashDB};
 
 use parachain::ValidationParams;
 
@@ -52,6 +56,16 @@ trait Storage {
 
 	/// Calculate the storage root.
 	fn storage_root(&mut self) -> [u8; STORAGE_ROOT_LEN];
+
+	/// Create a new transactional layer.
+	fn start_transaction(&mut self);
+
+	/// Discard a transactional layer, pending changes of every transaction below this layer are
+	/// dropped (including committed changes).
+	fn discard_transaction(&mut self);
+
+	/// Commit a transactional layer. The changes stay attached to parent transaction layer.
+	fn commit_transaction(&mut self);
 }
 
 /// Validate a given parachain block on a validator.
@@ -85,6 +99,10 @@ pub fn validate_block<B: BlockT, E: ExecuteBlock<B>>(
 			rio::ext_exists_storage.replace_implementation(ext_exists_storage),
 			rio::ext_clear_storage.replace_implementation(ext_clear_storage),
 			rio::ext_storage_root.replace_implementation(ext_storage_root),
+			// TODO child storage implementations.
+			rio::ext_storage_start_transaction.replace_implementation(ext_storage_start_transaction),
+			rio::ext_storage_discard_transaction.replace_implementation(ext_storage_discard_transaction),
+			rio::ext_storage_commit_transaction.replace_implementation(ext_storage_commit_transaction),
 		)
 	};
 
@@ -95,8 +113,10 @@ pub fn validate_block<B: BlockT, E: ExecuteBlock<B>>(
 /// witness data as source.
 struct WitnessStorage<B: BlockT> {
 	witness_data: MemoryDB<<HashingOf<B> as HashT>::Hasher>,
-	overlay: hashbrown::HashMap<Vec<u8>, Option<Vec<u8>>>,
+	overlay: hashbrown::HashMap<Vec<u8>, History<Option<Vec<u8>>>>,
 	storage_root: B::Hash,
+	history: States,
+	operation_from_last_gc: usize,
 }
 
 impl<B: BlockT> WitnessStorage<B> {
@@ -108,9 +128,9 @@ impl<B: BlockT> WitnessStorage<B> {
 		storage_root: B::Hash,
 	) -> Result<Self, &'static str> {
 		let mut db = MemoryDB::default();
-		data.into_iter().for_each(|i| { db.insert(&[], &i); });
+		data.into_iter().for_each(|i| { db.insert(EMPTY_PREFIX, &i); });
 
-		if !db.contains(&storage_root, &[]) {
+		if !db.contains(&storage_root, EMPTY_PREFIX) {
 			return Err("Witness data does not contain given storage root.")
 		}
 
@@ -118,34 +138,53 @@ impl<B: BlockT> WitnessStorage<B> {
 			witness_data: db,
 			overlay: Default::default(),
 			storage_root,
+			history: Default::default(),
+			operation_from_last_gc: Default::default(),
 		})
 	}
+
+	fn gc(&mut self) {
+		let history = self.history.as_ref();
+		let eager = Some(self.history.transaction_indexes());
+		let eager = || eager.as_ref().map(|t| t.as_slice());
+		self.overlay.retain(|_, h_value| h_value.gc(history, eager()).is_some());
+	}
+
 }
 
 impl<B: BlockT> Storage for WitnessStorage<B> {
 	fn get(&self, key: &[u8]) -> Option<Vec<u8>> {
-		self.overlay.get(key).cloned().or_else(|| {
-			read_trie_value(
-				&self.witness_data,
-				&self.storage_root,
-				key,
-			).ok()
-		}).unwrap_or(None)
+		self.overlay.get(key)
+			.and_then(|v| v.get(self.history.as_ref()))
+			.map(Clone::clone)
+			.or_else(|| {
+				read_trie_value::<Layout<_>, _>(
+					&self.witness_data,
+					&self.storage_root,
+					key,
+				).ok()
+			}).unwrap_or(None)
 	}
 
 	fn insert(&mut self, key: &[u8], value: &[u8]) {
-		self.overlay.insert(key.to_vec(), Some(value.to_vec()));
+		self.operation_from_last_gc += DEFAULT_GC_CONF.operation_cost(Some(&value));
+		self.overlay.entry(key.to_vec()).or_default()
+			.set(self.history.as_ref(), Some(value.to_vec()));
 	}
 
 	fn remove(&mut self, key: &[u8]) {
-		self.overlay.insert(key.to_vec(), None);
+		self.operation_from_last_gc += DEFAULT_GC_CONF.operation_cost(None);
+		self.overlay.entry(key.to_vec()).or_default()
+			.set(self.history.as_ref(), None);
 	}
 
 	fn storage_root(&mut self) -> [u8; STORAGE_ROOT_LEN] {
-		let root = match delta_trie_root(
+		let root = match delta_trie_root::<Layout<_>, _, _, _, _>(
 			&mut self.witness_data,
 			self.storage_root.clone(),
-			self.overlay.drain()
+			self.overlay.drain().filter_map(|(k, h_data)| {
+				h_data.into_pending(self.history.as_ref()).map(|v| (k, v))
+			}),
 		) {
 			Ok(root) => root,
 			Err(_) => return [0; STORAGE_ROOT_LEN],
@@ -156,6 +195,31 @@ impl<B: BlockT> Storage for WitnessStorage<B> {
 		res.copy_from_slice(root.as_ref());
 		res
 	}
+
+	fn start_transaction(&mut self) {
+		self.history.start_transaction();
+		if self.operation_from_last_gc > DEFAULT_GC_CONF.trigger_transaction_gc {
+			self.operation_from_last_gc = 0;
+			self.gc();
+		}
+	}
+
+	fn discard_transaction(&mut self) {
+		self.history.discard_transaction();
+		if self.operation_from_last_gc > DEFAULT_GC_CONF.trigger_transaction_gc {
+			self.operation_from_last_gc = 0;
+			self.gc();
+		}
+	}
+
+	fn commit_transaction(&mut self) {
+		self.history.commit_transaction();
+		if self.operation_from_last_gc > DEFAULT_GC_CONF.trigger_transaction_gc {
+			self.operation_from_last_gc = 0;
+			self.gc();
+		}
+	}
+
 }
 
 unsafe fn ext_get_allocated_storage(
@@ -235,3 +299,14 @@ unsafe fn ext_storage_root(result: *mut u8) {
 	let result = slice::from_raw_parts_mut(result, STORAGE_ROOT_LEN);
 	result.copy_from_slice(&res);
 }
+
+unsafe fn ext_storage_start_transaction() {
+	STORAGE.as_mut().expect(STORAGE_SET_EXPECT).start_transaction();
+}
+unsafe fn ext_storage_discard_transaction() {
+	STORAGE.as_mut().expect(STORAGE_SET_EXPECT).discard_transaction();
+}
+unsafe fn ext_storage_commit_transaction() {
+	STORAGE.as_mut().expect(STORAGE_SET_EXPECT).commit_transaction();
+}
+

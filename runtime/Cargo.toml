@@ -6,27 +6,28 @@ edition = "2018"
 
 [dependencies]
 # Substrate dependencies
-rstd = { package = "sr-std", git = "https://github.com/paritytech/substrate", default-features = false, branch = "bkchr-cumulus-branch" }
-runtime-primitives = { package = "sr-primitives", git = "https://github.com/paritytech/substrate", default-features = false, branch = "bkchr-cumulus-branch" }
-primitives = { package = "substrate-primitives", git = "https://github.com/paritytech/substrate", default-features = false, branch = "bkchr-cumulus-branch" }
-rio = { package = "sr-io", git = "https://github.com/paritytech/substrate", default-features = false, branch = "bkchr-cumulus-branch" }
-executive = { package = "srml-executive", git = "https://github.com/paritytech/substrate", default-features = false, branch = "bkchr-cumulus-branch" }
-substrate-trie = { git = "https://github.com/paritytech/substrate", default-features = false, branch = "bkchr-cumulus-branch" }
+rstd = { package = "sr-std", git = "https://github.com/cheme/substrate", default-features = false, branch = "ecr-cumulus-branch" }
+historied-data = { git = "https://github.com/cheme/substrate", default-features = false, branch = "ecr-cumulus-branch" }
+runtime-primitives = { package = "sr-primitives", git = "https://github.com/cheme/substrate", default-features = false, branch = "ecr-cumulus-branch" }
+primitives = { package = "substrate-primitives", git = "https://github.com/cheme/substrate", default-features = false, branch = "ecr-cumulus-branch" }
+rio = { package = "sr-io", git = "https://github.com/cheme/substrate", default-features = false, branch = "ecr-cumulus-branch" }
+executive = { package = "srml-executive", git = "https://github.com/cheme/substrate", default-features = false, branch = "ecr-cumulus-branch" }
+substrate-trie = { git = "https://github.com/cheme/substrate", default-features = false, branch = "ecr-cumulus-branch" }
 
 # Polkadot dependencies
-parachain = { package = "polkadot-parachain", git = "https://github.com/paritytech/polkadot", default-features = false, branch = "bkchr-cumulus-branch" }
+parachain = { package = "polkadot-parachain", git = "https://github.com/cheme/polkadot-1", default-features = false, branch = "ecr-cumulus-branch" }
 
 # Other deps
-codec = { package = "parity-codec", version = "3.5.1", default-features = false, features = [ "derive" ] }
-memory-db = { version = "0.12.2", default-features = false }
-hash-db = { version = "0.12.2", default-features = false }
-trie-db = { version = "0.12.2", default-features = false }
-hashbrown = "0.5.0"
+codec = { package = "parity-scale-codec", version = "1.0.5", default-features = false, features = [ "derive" ] }
+memory-db = { version = "0.15.2", default-features = false }
+hash-db = { version = "0.15.2", default-features = false }
+trie-db = { version = "0.15.2", default-features = false }
+hashbrown = "0.6.0"
 
 [dev-dependencies]
-keyring = { package = "substrate-keyring", git = "https://github.com/paritytech/substrate", branch = "bkchr-cumulus-branch" }
-executor = { package = "substrate-executor", git = "https://github.com/paritytech/substrate", branch = "bkchr-cumulus-branch" }
-consensus-common = { package = "substrate-consensus-common", git = "https://github.com/paritytech/substrate", branch = "bkchr-cumulus-branch" }
+keyring = { package = "substrate-keyring", git = "https://github.com/cheme/substrate", branch = "ecr-cumulus-branch" }
+executor = { package = "substrate-executor", git = "https://github.com/cheme/substrate", branch = "ecr-cumulus-branch" }
+consensus-common = { package = "substrate-consensus-common", git = "https://github.com/cheme/substrate", branch = "ecr-cumulus-branch" }
 test-client = { package = "cumulus-test-client", path = "../test/client" }
 
 [features]

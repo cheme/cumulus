@@ -7,17 +7,17 @@ edition = "2018"
 
 [dependencies]
 # substrate deps
-substrate-client = { git = "https://github.com/paritytech/substrate", branch = "bkchr-cumulus-branch" }
-substrate-consensus-common = { git = "https://github.com/paritytech/substrate", branch = "bkchr-cumulus-branch" }
-substrate-primitives = { git = "https://github.com/paritytech/substrate", branch = "bkchr-cumulus-branch" }
-sr-primitives = { git = "https://github.com/paritytech/substrate", branch = "bkchr-cumulus-branch" }
+substrate-client = { git = "https://github.com/cheme/substrate", branch = "ecr-cumulus-branch" }
+substrate-consensus-common = { git = "https://github.com/cheme/substrate", branch = "ecr-cumulus-branch" }
+substrate-primitives = { git = "https://github.com/cheme/substrate", branch = "ecr-cumulus-branch" }
+sr-primitives = { git = "https://github.com/cheme/substrate", branch = "ecr-cumulus-branch" }
 
 # polkadot deps
-polkadot-primitives = { git = "https://github.com/paritytech/polkadot", branch = "bkchr-cumulus-branch" }
-polkadot-runtime = { git = "https://github.com/paritytech/polkadot", branch = "bkchr-cumulus-branch" }
+polkadot-primitives = { git = "https://github.com/cheme/polkadot-1", branch = "ecr-cumulus-branch" }
+polkadot-runtime = { git = "https://github.com/cheme/polkadot-1", branch = "ecr-cumulus-branch" }
 
 # other deps
 futures = "0.1.21"
 tokio = "0.1.8"
-parity-codec = "3.5"
+parity-scale-codec = "1.0.5"
 log = "0.4"
