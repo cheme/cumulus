@@ -592,7 +592,7 @@ pub mod pallet {
 	impl<T: Config> GenesisBuild<T> for GenesisConfig {
 		fn build(&self) {
 			//TODO: Remove after https://github.com/paritytech/cumulus/issues/479
-			sp_io::storage::set(b":c", &[]);
+			//sp_io::storage::set(b":c", &[]);
 		}
 	}
 }
