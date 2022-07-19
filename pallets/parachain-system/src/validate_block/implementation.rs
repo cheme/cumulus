@@ -113,10 +113,10 @@ where
 			.replace_implementation(host_default_child_storage_next_key),
 		sp_io::offchain_index::host_set.replace_implementation(host_offchain_index_set),
 		sp_io::offchain_index::host_clear.replace_implementation(host_offchain_index_clear),
-		// QUESTION why is root not needed?
 		sp_io::mmr_child_storage::host_get.replace_implementation(host_mmr_child_storage_get),
 		sp_io::mmr_child_storage::host_push.replace_implementation(host_mmr_child_storage_push),
-		sp_io::mmr_child_storage::host_root.replace_implementation(host_mmr_child_storage_root),
+		// QUESTION why is root not needed?
+//		sp_io::mmr_child_storage::host_root.replace_implementation(host_mmr_child_storage_root),
 	);
 
 	let inherent_data = block

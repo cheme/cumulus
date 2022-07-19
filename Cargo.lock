@@ -13352,6 +13352,11 @@ dependencies = [
 ]
 
 [[patch.unused]]
+name = "trie-bench"
+version = "0.30.0"
+source = "git+https://github.com/cheme/trie?branch=size_parent_node#2b4234eb24d68dd42331816fd5e3770bcc8cce61"
+
+[[patch.unused]]
 name = "chain-spec-builder"
 version = "2.0.0"
 source = "git+https://github.com/cheme/substrate?branch=child_other_contract2#a4d161cef582a62c081e4a22a0ebcbe50b5b2215"
@@ -13725,8 +13730,3 @@ source = "git+https://github.com/cheme/polkadot-1?branch=child_other_contract2#a
 name = "zombienet-backchannel"
 version = "0.9.26"
 source = "git+https://github.com/cheme/polkadot-1?branch=child_other_contract2#a365c6afc2fa5a8701003df9f77c13c74fef233e"
-
-[[patch.unused]]
-name = "trie-bench"
-version = "0.30.0"
-source = "git+https://github.com/cheme/trie?branch=size_parent_node#2b4234eb24d68dd42331816fd5e3770bcc8cce61"
