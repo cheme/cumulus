@@ -34,9 +34,7 @@ use sp_api::{decl_runtime_apis, impl_runtime_apis};
 use sp_core::OpaqueMetadata;
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
-	traits::{
-		BlakeTwo256, Block as BlockT, Header as HeaderT, IdentifyAccount, IdentityLookup, Verify,
-	},
+	traits::{BlakeTwo256, Block as BlockT, IdentifyAccount, IdentityLookup, Verify},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, MultiSignature,
 };
@@ -369,35 +367,11 @@ impl_runtime_apis! {
 		}
 
 		fn execute_block(block: Block) {
-			let block_nb: u64 = *block.header().number() as u64;
-			let block_nb = if block_nb > 0 {
-				sp_io::mmr_child_storage::get(b"blocks", block_nb - 1).map(|enc|{
-					let mut buf = [0u8; 8];
-					buf.copy_from_slice(&enc[..]);
-					u64::from_le_bytes(buf) + block_nb
-				}).unwrap_or(block_nb)
-			} else {
-				block_nb
-			};
-			sp_io::mmr_child_storage::push(b"blocks", &block_nb.to_le_bytes()[..]);
-
 			Executive::execute_block(block)
 		}
 
 		fn initialize_block(header: &<Block as BlockT>::Header) {
-			let block_nb: u64 = *header.number() as u64;
-			let block_nb = if block_nb > 0 {
-				sp_io::mmr_child_storage::get(b"blocks", block_nb - 1).map(|enc|{
-					let mut buf = [0u8; 8];
-					buf.copy_from_slice(&enc[..]);
-					u64::from_le_bytes(buf) + block_nb
-				}).unwrap_or(block_nb)
-			} else {
-				block_nb
-			};
-			sp_io::mmr_child_storage::push(b"blocks", &block_nb.to_le_bytes()[..]);
-
-			Executive::initialize_block(header);
+			Executive::initialize_block(header)
 		}
 	}
 
